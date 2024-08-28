@@ -19,8 +19,8 @@ fn main() {
     // Positional ON/OFF arg
     if let Some(state) = args_in.get_one::<String>("state") {
         match state.as_str() {
-            "on" => println!("ON"),
-            "off" => println!("OFF"),
+            "on" => filehandling::turn_on(),
+            "off" => filehandling::turn_off(),
             _ => unreachable!(), // covered by value_parser()
         }
     }
@@ -39,6 +39,6 @@ fn main() {
         filehandling::remove_from_blacklist(domain); 
     }
     if let Some(_timespan) = args_in.get_one::<u32>("timer") {
-
+        unimplemented!();
     }
 }

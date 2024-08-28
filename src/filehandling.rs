@@ -1,6 +1,9 @@
-use std::{fs, io::{self, BufRead, Write}, os::unix::fs::FileExt};
+use std::collections::{HashSet, LinkedList};
+use std::fs::{self, OpenOptions};
+use std::io::{self, BufRead, Write};
 
-const BLACKLIST_PATH : &str = "./blacklist.txt";
+const HOSTFILE_PATH : &str = "/etc/hosts";
+const BLACKLIST_PATH : &str = "/usr/local/etc/stopwastingtime.txt";
 
 // List a blacklist, or create a new empty one if there is none
 pub fn list_blacklist() {
@@ -81,3 +84,86 @@ pub fn remove_from_blacklist(domain: &String) {
 
     println!("{domain} was removed from the blacklist.");
 }
+
+// Append all lines from the blacklist onto the end of the hostfile
+pub fn turn_on() {
+    let mut blacklist_str = String::new();
+
+    {
+        let blacklist_file = fs::OpenOptions::new()
+            .read(true)
+            .open(BLACKLIST_PATH)
+            .expect("Unable to open blacklist.");
+        let reader = io::BufReader::new(blacklist_file);
+        
+        for line in reader.lines() {
+            let line : String = line.expect("Couldn't read line."); 
+            blacklist_str.push_str(format!("127.0.0.1 {line}\n").as_str());
+        }
+    }
+
+    {
+        let mut host_file = fs::OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(HOSTFILE_PATH)
+            .expect("Unable to open hostfile.");
+
+        host_file.write(blacklist_str.as_bytes())
+            .expect("Failed to write to hostfile.");
+    }
+}
+
+// Read every entry in the hostfile except those in the blacklist, then rewrite
+pub fn turn_off() {
+    let mut blacklist_map = HashSet::new(); 
+    let mut hostfile_list : LinkedList<String> = LinkedList::new();
+
+    // Move blacklist to set
+    {
+        let blacklist_file = fs::OpenOptions::new()
+            .read(true)
+            .open(BLACKLIST_PATH)
+            .expect("Unable to open blacklist.");
+        let reader = io::BufReader::new(blacklist_file);
+
+        for line in reader.lines() {
+            let line : String = line.expect("Couldn't read line."); 
+            blacklist_map.insert(format!("127.0.0.1 {line}"));
+        }
+    }
+
+    // Move hostfile to list
+    {
+        let host_file = fs::OpenOptions::new()
+            .read(true)
+            .open(HOSTFILE_PATH)
+            .expect("Unable to open hostfile.");
+        let reader = io::BufReader::new(host_file);
+
+        for line in reader.lines() {
+            let host_line : String = line.expect("Couldn't read line.");
+            if !blacklist_map.contains(&host_line){
+                hostfile_list.push_front(host_line);
+            }
+        }
+
+    }
+
+    // Write back to hostfile
+    {
+        let host_file = fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(HOSTFILE_PATH)
+            .expect("Unable to open hostfile.");
+        let mut writer = io::BufWriter::new(host_file);
+
+        for domain in hostfile_list {
+
+           writer.write_fmt(format_args!("{domain}\n"))
+               .expect("Failed to write to file.");
+        }
+    }
+}
+
