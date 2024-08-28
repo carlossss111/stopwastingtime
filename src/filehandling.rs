@@ -1,5 +1,5 @@
 use std::collections::{HashSet, LinkedList};
-use std::fs::{self, OpenOptions};
+use std::fs::{self};
 use std::io::{self, BufRead, Write};
 
 const HOSTFILE_PATH : &str = "/etc/hosts";

@@ -1,8 +1,17 @@
 pub mod filehandling;
 
 use clap::{arg, Command};
+use nix::unistd::{geteuid, getuid, setuid};
 
 fn main() {
+    // Needs root privileges
+    // !!! If using setuid bit, ensure the blacklist has secure permissions
+    setuid(geteuid()).unwrap();
+    if getuid() != 0.into() {
+        println!("Su permissions are needed to change the hostfile.");
+        std::process::exit(1);
+    }
+
     // Arg handling
     let args_in = Command::new("stopwastingtime")
         .display_name("Stop Wasting Time!")
